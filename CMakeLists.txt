@@ -8,6 +8,10 @@ project(
 )
 
 find_package(Dawn REQUIRED)
+# if(Dawn_FOUND)  
+#     add_library(dawn::webgpu_dawn SHARED IMPORTED) 
+# endif(Dawn_FOUND)  
+
 add_executable(${PROJECT} hello_webgpu.cpp)
 
 set_target_properties(${PROJECT} PROPERTIES
@@ -28,19 +32,15 @@ target_link_libraries(${PROJECT} dawn::webgpu_dawn)
 #target_link_libraries(${PROJECT})
 
 # copy dawn dll
-# add_custom_command(${PROJECT} exe POST_BUILD
-#   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:exe> $<TARGET_FILE_DIR:exe>
-#   COMMAND_EXPAND_LISTS
-#   )
-  
-# add_custom_command((${PROJECT} exe POST_BUILD
-#                            COMMAND ${CMAKE_COMMAND} -E copy
-#                                    #${CMAKE_INSTALL_PREFIX}/bin/Open3D.dll
-#                                    $<TARGET_FILE:dawn::webgpu_dawn>
-#                                    #${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
-#                                    $<TARGET_FILE_DIR:exe> COMMAND_EXPAND_LISTS )
+# https://discourse.cmake.org/t/copying-created-shared-libraries/4936/4
+# https://discourse.cmake.org/t/usage-of-target-runtime-dlls-generator-expression/6355
+add_custom_command(TARGET ${PROJECT}  POST_BUILD
+	# essential not to put spaces between '${PROJECT}' and '>' in the next line!!!
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${PROJECT}> $<TARGET_FILE_DIR:${PROJECT}>
+  COMMAND_EXPAND_LISTS
+)  
 
-# add_custom_command(${PROJECT} exe POST_BUILD
-#   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:dawn::webgpu_dawn> $<TARGET_FILE_DIR:exe>
+# add_custom_command(TARGET ${PROJECT} POST_BUILD
+#   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${PROJECT}> $<TARGET_FILE_DIR:${PROJECT}>
 #   COMMAND_EXPAND_LISTS
-#   )
+# ) 
