@@ -1,0 +1,73 @@
+cmake_minimum_required(VERSION 3.13)
+
+set(PROJECT hello_webgpu)
+
+project(
+    ${PROJECT}
+    LANGUAGES CXX C
+)
+
+find_package(Dawn REQUIRED)
+# if(Dawn_FOUND)  
+#     add_library(dawn::webgpu_dawn SHARED IMPORTED) 
+# endif(Dawn_FOUND)  
+
+#find_package(wgpu-native REQUIRED)
+
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/opt/homebrew/Cellar/libgit2")
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/lib")
+
+find_package(PkgConfig)
+if (PkgConfig_FOUND)
+    pkg_check_modules(WGPU_NATIVE wgpu-native)
+else()
+	set(WGPU_NATIVE_INCLUDE_DIRS "C:/DEV/WebGPU_wgpu-native-C-from-rust/wgpu-native/meson-install-release/include")
+	set(WGPU_NATIVE_LIBRARY_DIRS "C:/DEV/WebGPU_wgpu-native-C-from-rust/wgpu-native/meson-install-release/lib")
+	set(WGPU_NATIVE_LIBRARIES "libwgpu_native")
+endif ()
+
+
+# add_executable(${PROJECT} hello_webgpu.cpp)
+add_executable(${PROJECT} hello_webgpu_c.cpp)
+
+set_target_properties(${PROJECT} PROPERTIES
+	CXX_STANDARD 20
+	CXX_STANDARD_REQUIRED ON
+	CXX_EXTENSIONS OFF
+	COMPILE_WARNING_AS_ERROR ON
+)
+
+# include_directories(dawn::webgpu_dawn/include) #?
+
+
+#[=[
+target_include_directories(${PROJECT}
+        PRIVATE
+        ${WGPU_NATIVE_INCLUDE_DIRS})
+
+target_link_directories(${PROJECT}
+        PRIVATE
+        ${WGPU_NATIVE_LIBRARY_DIRS})
+
+target_link_libraries(${PROJECT}
+        PRIVATE
+        ${WGPU_NATIVE_LIBRARIES})
+#]=]		
+		
+
+# Declare dependency on the dawn::webgpu_dawn library
+target_link_libraries(${PROJECT} dawn::webgpu_dawn)
+
+# copy dawn dll
+# https://discourse.cmake.org/t/copying-created-shared-libraries/4936/4
+# https://discourse.cmake.org/t/usage-of-target-runtime-dlls-generator-expression/6355
+add_custom_command(TARGET ${PROJECT}  POST_BUILD
+	# essential not to put spaces between '${PROJECT}' and '>' in the next line!!!
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${PROJECT}> $<TARGET_FILE_DIR:${PROJECT}>
+  COMMAND_EXPAND_LISTS
+)  
+
+# add_custom_command(TARGET ${PROJECT} POST_BUILD
+#   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${PROJECT}> $<TARGET_FILE_DIR:${PROJECT}>
+#   COMMAND_EXPAND_LISTS
+# ) 
