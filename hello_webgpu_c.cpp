@@ -23,7 +23,8 @@
 
 
 int main (int, char**) {
-    
+
+std::cout << "WebGPU Backend is " << WEBGPU_BACKEND << std::endl;
 #if ( WEBGPU_BACKEND == WEBGPU_WGPU_NATIVE )
     std::cout << "WEBGPU_WGPU_NATIVE\n";
 #elif ( WEBGPU_BACKEND == WEBGPU_DAWN )

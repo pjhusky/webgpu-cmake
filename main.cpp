@@ -73,6 +73,21 @@ private:
 };
 
 int main() {
+
+#if ( WEBGPU_BACKEND == WEBGPU_WGPU_NATIVE )
+	std::cout << "WebGPU Backend is wgpu-native\n";
+	std::cout << WEBGPU_WGPU_NATIVE_STR << std::endl;
+	std::cout << DUMMY << std::endl;
+#elif ( WEBGPU_BACKEND == WEBGPU_DAWN )
+	std::cout << "WebGPU Backend is dawn\n";
+	std::cout << WEBGPU_DAWN_STR << std::endl;
+#else
+	std::cout << "WebGPU Backend is UNKNOWN\n";
+#endif
+	
+	//std::cout << "WebGPU Backend is " << WEBGPU_BACKEND << std::endl;
+	std::cout << "WebGPU Backend is " << WEBGPU_BACKEND_STR << std::endl;
+	
 	Application app;
 
 	if (!app.Initialize()) {
