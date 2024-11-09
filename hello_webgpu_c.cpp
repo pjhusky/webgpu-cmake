@@ -1,6 +1,6 @@
 // Include WebGPU header
 // #include <webgpu/webgpu.h>
-#if ( WEBGPU_PROVIDER == WEBGPU_WGPU_NATIVE )
+#if ( WEBGPU_BACKEND == WEBGPU_WGPU_NATIVE )
     #include <webgpu-headers/webgpu.h> 
 #else
     #include <webgpu/webgpu.h>
@@ -9,7 +9,7 @@
 #include <iostream>
 
 // AFTER ALL INCLUDES
-#if 0 && (WEBGPU_PROVIDER == WEBGPU_WGPU_NATIVE )
+#if 0 && (WEBGPU_BACKEND == WEBGPU_WGPU_NATIVE )
     // native-static-libs: advapi32.lib ws2_32.lib userenv.lib shell32.lib msvcrt.lib
     #pragma comment(lib,"WS2_32")
     #pragma comment(lib,"ntdll")
@@ -24,9 +24,9 @@
 
 int main (int, char**) {
     
-#if ( WEBGPU_PROVIDER == WEBGPU_WGPU_NATIVE )
+#if ( WEBGPU_BACKEND == WEBGPU_WGPU_NATIVE )
     std::cout << "WEBGPU_WGPU_NATIVE\n";
-#elif ( WEBGPU_PROVIDER == WEBGPU_DAWN )
+#elif ( WEBGPU_BACKEND == WEBGPU_DAWN )
     std::cout << "WEBGPU_DAWN\n";
 #else
     std::cout << "UNKNOWN WEBGPU IMPL\n";
