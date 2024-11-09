@@ -76,15 +76,46 @@ project(
 )
 
 
+# https://medium.com/swlh/cpm-an-awesome-dependency-manager-for-c-with-cmake-3c53f4376766
 
-add_compile_definitions( WEBGPU_PROVIDER ${WEBGPU_IMPL_STR})
+# ----------------
+# ---  get CPM ---
+set(CPM_DOWNLOAD_VERSION 0.27.2) 
+set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+
+if(NOT (EXISTS ${CPM_DOWNLOAD_LOCATION}))
+    message(STATUS "Downloading CPM.cmake")
+    file(DOWNLOAD https://github.com/TheLartians/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake ${CPM_DOWNLOAD_LOCATION})
+endif()
+
+include(${CPM_DOWNLOAD_LOCATION})
+# --- ~get CPM ---
+# ----------------
+
+# https://alandefreitas.github.io/matplotplusplus/integration/cmake/embed-with-cpmcmake/
+# or on cmd-line: -DCPM_USE_LOCAL_PACKAGES=ON
+option(CPM_USE_LOCAL_PACKAGES "Try `find_package` before downloading dependencies" ON)
+
+
+add_executable( ${PROJECT} 
+	main.cpp
+	webgpu-utils.h
+	webgpu-utils.cpp
+)
+
+add_compile_definitions( WEBGPU_BACKEND ${WEBGPU_IMPL_STR})
 
 
 # add_executable(${PROJECT} hello_webgpu.cpp) # only works in Dawn (or with a Cpp wrapper for WGPU_Native?)
-add_executable(${PROJECT} hello_webgpu_c.cpp)
+# add_executable(${PROJECT} hello_webgpu_c.cpp)
+
+
 
 set_target_properties(${PROJECT} PROPERTIES
-	CXX_STANDARD 20
+	C_STANDARD 20
+	C_STANDARD_REQUIRED ON
+	C_EXTENSIONS OFF
+	CXX_STANDARD 20	
 	CXX_STANDARD_REQUIRED ON
 	CXX_EXTENSIONS OFF
 	COMPILE_WARNING_AS_ERROR ON
@@ -92,9 +123,139 @@ set_target_properties(${PROJECT} PROPERTIES
 
 # include_directories(dawn::webgpu_dawn/include) #?
 
+if ( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_STR_WGPU_NATIVE} )
+	# include(FindPkgConfig)
+	# pkg_check_modules(WGPU_NATIVE wgpu-native)
+
+	# 
+	# add_library(wgpu-native MODULE IMPORTED)
+	add_library(wgpu-native STATIC IMPORTED)
+	set_target_properties(wgpu-native PROPERTIES
+		INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
+		#INTERFACE_INCLUDE_DIRECTORIES "C:/DEV/WebGPU_wgpu-native-C-from-rust/wgpu-native/meson-install-release/include"
+		#INTERFACE_INCLUDE_DIRECTORIES "${WEBGPU_WGPU_NATIVE_BASE_DIR}/include"
+		#INTERFACE_INCLUDE_DIRECTORIES "/include"
+		#
+		IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/libwgpu_native.a"
+		#IMPORTED_LOCATION "C:/DEV/WebGPU_wgpu-native-C-from-rust/wgpu-native/meson-install-release/lib/libwgpu_native.a"
+		#IMPORTED_LOCATION "${WEBGPU_WGPU_NATIVE_BASE_DIR}/lib/libwgpu_native.a"
+		#IMPORTED_LOCATION "/lib/libwgpu_native.a"
+	)
+
+	find_package( wgpu-native REQUIRED )
+
+	add_library(webgpu ALIAS wgpu-native)
+	# # glfw3wegpu assumes that targets 'glfw' and 'webgpu' exist.
+	add_subdirectory( glfw3webgpu )
+else()
+	find_package( Dawn REQUIRED )
+	#find_package( Dawn )
+
+	# glfw3wegpu assumes that targets 'glfw' and 'webgpu' exist.
+	add_library(webgpu ALIAS dawn::webgpu_dawn)
+	add_subdirectory( glfw3webgpu )
+endif()
+
+
+#[==[
+# find_package( glfw REQUIRED ) # searches only locally
+include(FetchContent)
+FetchContent_Declare(
+  glfw3
+  GIT_REPOSITORY https://github.com/glfw/glfw
+#   GIT_REPOSITORY git@github.com:glfw/glfw.git
+  GIT_TAG        7b6aead9fb88b3623e3b3725ebb42670cbe4c579 # v 3.4
+#   OPTIONS
+# 	"GLFW_LIBRARY_TYPE STATIC"
+# 	# "GLFW_LIBRARY_TYPE OBJECT" # https://www.glfw.org/docs/latest/compile.html
+# 	"GLFW_BUILD_TESTS OFF"
+# 	"GLFW_BUILD_EXAMPLES OFF"
+# 	"GLFW_BUILD_DOCS OFF"
+)
+# This will try calling find_package() first for both dependencies
+FetchContent_MakeAvailable(glfw3)
+# find_package(glfw3
+#     REQUIRED
+#     NO_DEFAULT_PATH
+#     #PATHS ${mylibrary_SOURCE_DIR}/path/to/dir/containing/*Config.cmake
+# 	PATHS ${CMAKE_FIND_PACKAGE_REDIRECTS_DIR}
+# )
+# include(CMakeFindDependencyMacro)
+# find_dependency(glfw3)
+
+
+# FetchContent_Populate(glfw3)
+
+#target_link_libraries( ${PROJECT} PRIVATE glfw3 )
+# target_link_libraries( ${PROJECT} PRIVATE glfw )
+# target_link_libraries( ${PROJECT} PRIVATE glfw3::glfw )
+
+#]==]
+
+# https://github.com/cpm-cmake/CPM.cmake/wiki/More-Snippets
+
+CPMAddPackage(
+        NAME GLFW3
+        GITHUB_REPOSITORY glfw/glfw
+        GIT_TAG 3.4
+        OPTIONS
+          "GLFW_LIBRARY_TYPE STATIC"
+          # "GLFW_LIBRARY_TYPE OBJECT" # https://www.glfw.org/docs/latest/compile.html
+          "GLFW_BUILD_TESTS OFF"
+          "GLFW_BUILD_EXAMPLES OFF"
+          "GLFW_BUILD_DOCS OFF"
+)
+if (GLFW3_ADDED)
+    target_include_directories(glfw 
+                               PUBLIC $<BUILD_INTERFACE:${GLFW3_BINARY_DIR}>
+                               PUBLIC $<INSTALL_INTERFACE:include>)
+    # target_include_directories(zlibstatic 
+    #                            PUBLIC $<BUILD_INTERFACE:${GLFW3_BINARY_DIR}>
+    #                            PUBLIC $<INSTALL_INTERFACE:include>)
+    
+	target_include_directories( ${PROJECT} PRIVATE "${GLFW3_SOURCE_DIR}/include" )
+	
+    message(STATUS "Cmake added local GLFW3: ${GLFW3_SOURCE_DIR}")
+	add_library(glfw3 ALIAS glfw)
+endif()
+# if (GLFW3_ADDED)
+#   # while it will build, Intellisense in IDEs have a hard time finding the header(s) without this line
+#   include_directories( ${PROJECT} PRIVATE "${GLFW3_SOURCE_DIR}/include" ) # hmmm, seemed to be necessary before, but is no longer necessary now ...
+
+#   # TL;DR:
+#   # target_link_libraries() at the very bottom doesn't necessarily reference the lib by file name
+#   # through CMake building the "name" may be given independently as the "generic" library name
+#   # for glfw lib, the generic name is "glfw" and thus should be used in target_link_libraries(), even when the lib is called glfw3
+#   # => to make it a bit more intuitive, we can introduce an alias name, though, through add_library( .. ALIAS .. )
+  
+# # https://cmake.org/cmake/help/latest/command/target_link_libraries.html
+# #   The named target must be created by add_library() within the project or as an IMPORTED library.
+# #   ==> <project-dir>\build_CPM_SRC_CACHE\glfw3\9fc60ad2c810b92f74235a589a9a0edee75bc2d3\src\CMakeLists.txt
+# #     add_library(glfw ${GLFW_LIBRARY_TYPE}
+# #                 "${GLFW_SOURCE_DIR}/include/GLFW/glfw3.h"
+# #                 "${GLFW_SOURCE_DIR}/include/GLFW/glfw3native.h"
+# #                 internal.h platform.h mappings.h
+# #                 ... null_window.c null_joystick.c)
+
+# # https://cmake.org/cmake/help/latest/command/add_library.html#alias-libraries
+# # Creates an Alias Target, such that <name> can be used to refer to <target> in subsequent commands.
+# # Just so that linking is more intuitive - the file is called libglfw3.a after all, i.e., WITH the number '3' in the name, not just plain glfw
+#   add_library(glfw3 ALIAS glfw)
+
+# endif()
+
+
+# include_directories(
+# 	dawn::webgpu_dawn
+# )
 
 
 
+# target_link_libraries( ${PROJECT} PRIVATE glfw3webgpu )
+
+
+
+#[==[
 if ( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_STR_WGPU_NATIVE} )
 	# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/opt/homebrew/Cellar/libgit2")
 	# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/lib")
@@ -147,6 +308,8 @@ if ( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_STR_WGPU_NATIVE} )
 					target_link_libraries(${PROJECT}
 						PRIVATE
 						"${ELEMENT}/lib/libwgpu_native.a")
+						
+
 				endif()
 				
 			endforeach( LIST_EL IN ${CMAKE_PREFIX_PATH} )
@@ -155,7 +318,7 @@ if ( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_STR_WGPU_NATIVE} )
 else()
 	find_package(Dawn REQUIRED)
 endif()
-
+#]==]
 
 
 
@@ -172,17 +335,31 @@ if ( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_STR_WGPU_NATIVE} )
 	# target_link_libraries(${PROJECT}
 	# 		PRIVATE
 	# 		${WGPU_NATIVE_LIBRARIES})
-			
+	
+					# find_package( wgpu-native )
+					# add_library(webgpu ALIAS wgpu-native)
+					# # glfw3wegpu assumes that targets 'glfw' and 'webgpu' exist.
+					# add_subdirectory( glfw3webgpu )
+	
 	if ( MSVC )
+
+
 		target_link_libraries(${PROJECT}
 			PRIVATE
-			"WS2_32" "ntdll" "userenv" "advapi32" "shell32" "msvcrt" "Opengl32" "d3dcompiler" )
+			"WS2_32" "ntdll" "userenv" "advapi32" "shell32" "msvcrt" "Opengl32" "d3dcompiler" 
+			glfw3 glfw3webgpu )
 	endif()
 	
 	#]=]		
 else()
 	# Declare dependency on the dawn::webgpu_dawn library
-	target_link_libraries(${PROJECT} dawn::webgpu_dawn)
+	# target_link_libraries( ${PROJECT} dawn::webgpu_dawn glfw3webgpu )
+	target_link_libraries( ${PROJECT} dawn::webgpu_dawn glfw3 glfw3webgpu )
+
+	# target_include_directories( ${PROJECT}
+	# 	PRIVATE
+	# 	dawn::webgpu_dawn
+	# )
 
 	# copy dawn dll
 	# https://discourse.cmake.org/t/copying-created-shared-libraries/4936/4
