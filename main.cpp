@@ -317,7 +317,9 @@ WGPUTextureView Application::GetNextSurfaceTextureView() {
 #ifndef WEBGPU_BACKEND_WGPU
 	// We no longer need the texture, only its view
 	// (NB: with wgpu-native, surface textures must not be manually released)
-	wgpuTextureRelease(surfaceTexture.texture);
+	#if ( WEBGPU_BACKEND != WEBGPU_WGPU_NATIVE )	
+		wgpuTextureRelease(surfaceTexture.texture);
+	#endif
 #endif // WEBGPU_BACKEND_WGPU
 
 	return targetView;
