@@ -334,12 +334,10 @@ WGPUTextureView Application::GetNextSurfaceTextureView() {
 	viewDescriptor.aspect = WGPUTextureAspect_All;
 	WGPUTextureView targetView = wgpuTextureCreateView(surfaceTexture.texture, &viewDescriptor);
 
-#ifndef WEBGPU_IMPL_WGPU
+#if ( WEBGPU_IMPL != WEBGPU_IMPL_WGPU_NATIVE )	
 	// We no longer need the texture, only its view
 	// (NB: with wgpu-native, surface textures must not be manually released)
-	#if ( WEBGPU_IMPL != WEBGPU_IMPL_WGPU_NATIVE )	
-		wgpuTextureRelease(surfaceTexture.texture);
-	#endif
+	wgpuTextureRelease(surfaceTexture.texture);
 #endif // WEBGPU_IMPL_WGPU
 
 	return targetView;
