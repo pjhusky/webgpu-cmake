@@ -1,68 +1,85 @@
 cmake_minimum_required(VERSION 3.13)
 
-set(WEBGPU_BACKEND_STR_WGPU_NATIVE "WEBGPU_WGPU_NATIVE")
-set(WEBGPU_BACKEND_STR_DAWN "WEBGPU_DAWN")
+# WARNING: KEEP THESE STRINGS iN SYNC WITH build_win.bat
+message( "WARNING: KEEP THESE STRINGS iN SYNC WITH build_win.bat" )
+set(WEBGPU_IMPL_WGPU_NATIVE_NAME "WEBGPU_IMPL_WGPU_NATIVE")
+set(WEBGPU_IMPL_DAWN_NAME "WEBGPU_IMPL_DAWN")
 
 # # SWITCH for WGPU_NATIVE vs. DAWN
-# set(WEBGPU_BACKEND_STR ${WEBGPU_BACKEND_STR_DAWN})
-# # set(WEBGPU_BACKEND_STR ${WEBGPU_BACKEND_STR_WGPU_NATIVE})
+# set(WEBGPU_IMPL_STR ${WEBGPU_IMPL_DAWN_NAME})
+# # set(WEBGPU_IMPL_STR ${WEBGPU_IMPL_WGPU_NATIVE_NAME})
 
-message(status " WEBGPU_BACKEND_STR is " '$ENV{WEBGPU_BACKEND_STR}')
+message( STATUS "Initially, WEBGPU_IMPL_STR is '$ENV{WEBGPU_IMPL_STR}'\n" )
 
-# helper function, try to set the desired WebGPU implementation based on the env var 'WEBGPU_BACKEND_STR'
+# helper function, try to set the desired WebGPU implementation based on the env var 'WEBGPU_IMPL_STR'
 function(TrySetWebGpuFromEnvVar)
-	if (DEFINED ENV{WEBGPU_BACKEND_STR}) # without '$' on purpose
-		if ( "$ENV{WEBGPU_BACKEND_STR}" MATCHES "${WEBGPU_BACKEND_STR_WGPU_NATIVE}" OR "$ENV{WEBGPU_BACKEND_STR}" MATCHES "${WEBGPU_BACKEND_STR_DAWN}" )
-			message( "ENV VAR: WEBGPU_BACKEND_STR is set to a known WEBGPU impl, so we use it" )
-			set(WEBGPU_BACKEND_STR "$ENV{WEBGPU_BACKEND_STR}")
+	if (DEFINED ENV{WEBGPU_IMPL_STR}) # without '$' on purpose
+		if ( "$ENV{WEBGPU_IMPL_STR}" MATCHES "${WEBGPU_IMPL_WGPU_NATIVE_NAME}" OR "$ENV{WEBGPU_IMPL_STR}" MATCHES "${WEBGPU_IMPL_DAWN_NAME}" )
+			message( "ENV VAR: WEBGPU_IMPL_STR is set to a known WEBGPU impl, so we use it" )
+			set(WEBGPU_IMPL_STR "$ENV{WEBGPU_IMPL_STR}")
 		else()
-			message( "ENV VAR: no known WebGPU implementation selected (${WEBGPU_BACKEND_STR_WGPU_NATIVE} or ${WEBGPU_BACKEND_STR_DAWN})" )
+			message( "ENV VAR: no known WebGPU implementation selected (${WEBGPU_IMPL_WGPU_NATIVE_NAME} or ${WEBGPU_IMPL_DAWN_NAME})" )
 		endif()
 	else() # not 
-		message( "ENV VAR: WEBGPU_BACKEND_STR Environment variable NOT DEFINED" )
+		message( "ENV VAR: WEBGPU_IMPL_STR Environment variable NOT DEFINED" )
 	endif()	
 endfunction(TrySetWebGpuFromEnvVar)
 
 # try to set the desired WebGPU implementation from either a variable 
-# (passed with '-DWEBGPU_BACKEND_STR="<str-val>"') or from the env var of the same name 'WEBGPU_BACKEND_STR'
+# (passed with '-DWEBGPU_IMPL_STR="<str-val>"') or from the env var of the same name 'WEBGPU_IMPL_STR'
 # if command-line var is passed it has higher priority than the env var
 # either var is only ever used when defined AND set to a known impl
 # otherwise we fall back to the Dawn WebGPU implementation
-message( "non-env var WEBGPU_BACKEND_STR is '${WEBGPU_BACKEND_STR}'" )
-if ( DEFINED WEBGPU_BACKEND_STR ) # on purpose without '$' => https://stackoverflow.com/a/51621325
-	message( "non-env var WEBGPU_BACKEND_STR is defined" )
-	if ( "${WEBGPU_BACKEND_STR}" MATCHES "${WEBGPU_BACKEND_STR_WGPU_NATIVE}" OR "${WEBGPU_BACKEND_STR}" MATCHES "${WEBGPU_BACKEND_STR_DAWN}" )
-		message( "non-env var WEBGPU_BACKEND_STR is set to a known WEBGPU impl, so we use it" )
-		message( "WEBGPU_BACKEND_STR cmake var = ${WEBGPU_BACKEND_STR}" )
+message( "non-env var WEBGPU_IMPL_STR is '${WEBGPU_IMPL_STR}'" )
+if ( DEFINED WEBGPU_IMPL_STR ) # on purpose without '$' => https://stackoverflow.com/a/51621325
+	message( "non-env var WEBGPU_IMPL_STR is defined" )
+	if ( "${WEBGPU_IMPL_STR}" MATCHES "${WEBGPU_IMPL_WGPU_NATIVE_NAME}" OR "${WEBGPU_IMPL_STR}" MATCHES "${WEBGPU_IMPL_DAWN_NAME}" )
+		message( "non-env var WEBGPU_IMPL_STR is set to a known WEBGPU impl, so we use it" )
+		message( "WEBGPU_IMPL_STR cmake var = ${WEBGPU_IMPL_STR}" )
 	else()
-		message( "non-env var WEBGPU_BACKEND_STR is NOT set to a known WEBGPU impl, try fallback to env var" )
+		message( "non-env var WEBGPU_IMPL_STR is NOT set to a known WEBGPU impl, try fallback to env var" )
 		TrySetWebGpuFromEnvVar()
 	endif()
 else()
-	message( "non-env var WEBGPU_BACKEND_STR is NOT defined, try fallback to env var" )
+	message( "non-env var WEBGPU_IMPL_STR is NOT defined, try fallback to env var" )
 	TrySetWebGpuFromEnvVar()
 endif()	
 
 # if neither the variable nor the env-variable were defined and set to a valid value, fallback to the Dawn WebGPU implementation
-if ( NOT DEFINED WEBGPU_BACKEND_STR )
-	message( "defaulting to '${WEBGPU_BACKEND_STR_DAWN}'" )
-	set(WEBGPU_BACKEND_STR ${WEBGPU_BACKEND_STR_DAWN})
+if ( NOT DEFINED WEBGPU_IMPL_STR )
+	message( "defaulting to '${WEBGPU_IMPL_DAWN_NAME}'" )
+	set(WEBGPU_IMPL_STR ${WEBGPU_IMPL_DAWN_NAME})
 else()
-	message( "WEBGPU_BACKEND_STR successfully set to '${WEBGPU_BACKEND_STR}'" )
+	message( "\n" )
+	message( STATUS "WEBGPU_IMPL_STR successfully set to '${WEBGPU_IMPL_STR}'\n" )
 endif()
 
 
-message( "WEBGPU_BACKEND_STR = '${WEBGPU_BACKEND_STR}'" )
-message( "WEBGPU_BACKEND_STR_WGPU_NATIVE = '${WEBGPU_BACKEND_STR_WGPU_NATIVE}'" )
-message( "WEBGPU_BACKEND_STR_DAWN = '${WEBGPU_BACKEND_STR_DAWN}'" )
+message( "WEBGPU_IMPL_STR = '${WEBGPU_IMPL_STR}'" )
+message( "WEBGPU_IMPL_WGPU_NATIVE_NAME = '${WEBGPU_IMPL_WGPU_NATIVE_NAME}'" )
+message( "WEBGPU_IMPL_DAWN_NAME = '${WEBGPU_IMPL_DAWN_NAME}'" )
+
+# string( MD5 WEBGPU_IMPL_STR ${WEBGPU_IMPL_STR} )
+# string( CONCAT WEBGPU_IMPL_STR_TOKEN "0x" ${WEBGPU_IMPL_STR} "ULL" )
+
+# string( MD5 WEBGPU_IMPL_WGPU_NATIVE_TOKEN ${WEBGPU_IMPL_WGPU_NATIVE_NAME} )
+# string( CONCAT WEBGPU_IMPL_WGPU_NATIVE_TOKEN "0x" ${WEBGPU_IMPL_WGPU_NATIVE_TOKEN} "ULL" )
+
+# string( MD5 WEBGPU_IMPL_DAWN_TOKEN ${WEBGPU_IMPL_DAWN_NAME} )
+# string( CONCAT WEBGPU_IMPL_DAWN_TOKEN "0x" ${WEBGPU_IMPL_DAWN_TOKEN} "ULL" )
+
+set( WEBGPU_IMPL_WGPU_NATIVE_TOKEN 1 )
+set( WEBGPU_IMPL_DAWN_TOKEN 2 )
 
 add_compile_options( 
-	-DWEBGPU_BACKEND=${WEBGPU_BACKEND_STR} 
-	-DWEBGPU_WGPU_NATIVE=${WEBGPU_BACKEND_STR_WGPU_NATIVE} 
-	-DWEBGPU_DAWN=${WEBGPU_BACKEND_STR_DAWN} 
-	-DWEBGPU_BACKEND_STR="${WEBGPU_BACKEND_STR}" 
-	-DWEBGPU_WGPU_NATIVE_STR="${WEBGPU_BACKEND_STR_WGPU_NATIVE}" 
-	-DWEBGPU_DAWN_STR="${WEBGPU_BACKEND_STR_DAWN}" 
+	-DWEBGPU_IMPL=${WEBGPU_IMPL_STR} 
+	-DWEBGPU_IMPL_WGPU_NATIVE=${WEBGPU_IMPL_WGPU_NATIVE_TOKEN} 
+	-DWEBGPU_IMPL_DAWN=${WEBGPU_IMPL_DAWN_TOKEN} 
+	#
+	-DWEBGPU_IMPL_STR="${WEBGPU_IMPL_STR}" 
+	-DWEBGPU_IMPL_WGPU_NATIVE_NAME="${WEBGPU_IMPL_WGPU_NATIVE_NAME}" 
+	-DWEBGPU_IMPL_DAWN_NAME="${WEBGPU_IMPL_DAWN_NAME}" 
+	#
 	-DDUMMY=27 ) 
 
 
@@ -185,7 +202,7 @@ include_directories( "${glfw_SOURCE_DIR}/include" )
 
 
 
-if ( ${WEBGPU_BACKEND_STR} STREQUAL ${WEBGPU_BACKEND_STR_WGPU_NATIVE} )
+if ( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_WGPU_NATIVE_NAME} )
 
 	# 
 	add_library(wgpu-native STATIC IMPORTED)
@@ -288,7 +305,7 @@ endif()
 
 
 
-if ( ${WEBGPU_BACKEND_STR} STREQUAL ${WEBGPU_BACKEND_STR_WGPU_NATIVE} )
+if ( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_WGPU_NATIVE_NAME} )
 	
 	if ( MSVC )
 		target_link_libraries(${PROJECT}

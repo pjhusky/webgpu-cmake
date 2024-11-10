@@ -32,7 +32,7 @@
 
 #include "glfw3webgpu.h"
 
-#if ( WEBGPU_BACKEND == WEBGPU_WGPU_NATIVE )
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )
     #include <webgpu-headers/webgpu.h> 
 #else
     #include <webgpu/webgpu.h>
@@ -137,7 +137,7 @@ WGPUSurface glfwGetWGPUSurface(WGPUInstance instance, GLFWwindow* window) {
         WGPUSurfaceDescriptorFromWindowsHWND fromWindowsHWND;
         fromWindowsHWND.chain.next = NULL;
         
-    #if ( WEBGPU_BACKEND == WEBGPU_WGPU_NATIVE )
+    #if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )
         fromWindowsHWND.chain.sType = WGPUSType_SurfaceDescriptorFromWindowsHWND;
     #else
         //fromWindowsHWND.chain.sType = WGPUSType_ShaderSourceWGSL; // same val other name in Dawn ... (?)
@@ -148,7 +148,7 @@ WGPUSurface glfwGetWGPUSurface(WGPUInstance instance, GLFWwindow* window) {
 
         WGPUSurfaceDescriptor surfaceDescriptor;
         surfaceDescriptor.nextInChain = &fromWindowsHWND.chain;
-    #if ( WEBGPU_BACKEND == WEBGPU_WGPU_NATIVE )
+    #if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )
         surfaceDescriptor.label = NULL;
     #else
         WGPUStringView nsv;// = WGPUStringView{ nullptr, 0 };

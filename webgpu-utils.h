@@ -26,7 +26,7 @@
 
 #pragma once
 
-#if ( WEBGPU_BACKEND == WEBGPU_WGPU_NATIVE )
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )
     #include <webgpu-headers/webgpu.h> 
 #else
     #include <webgpu/webgpu.h>
