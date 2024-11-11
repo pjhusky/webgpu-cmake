@@ -318,12 +318,13 @@ WGPUTextureView Application::GetNextSurfaceTextureView() {
 	}
 
 	// Create a view for this surface texture
-	WGPUTextureViewDescriptor viewDescriptor;
+	//WGPUTextureViewDescriptor viewDescriptor; // <= problematic - leaves fields uninitialized!!!
+	WGPUTextureViewDescriptor viewDescriptor{}; // <= actually fixes the problem of having to set viewDescriptor.usage = WGPUTextureUsage_None; 
 	viewDescriptor.nextInChain = nullptr;
-#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )	
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )	
 	viewDescriptor.label = "Surface texture view";
 #else
-	viewDescriptor.label = WGPUStringView{ "Surface texture view", strlen( "Surface texture view" ) };
+	viewDescriptor.label = WGPUStringView{ "Surface texture view", 0+strlen( "Surface texture view" ) };
 #endif
 	viewDescriptor.format = wgpuTextureGetFormat(surfaceTexture.texture);
 	viewDescriptor.dimension = WGPUTextureViewDimension_2D;
@@ -331,6 +332,7 @@ WGPUTextureView Application::GetNextSurfaceTextureView() {
 	viewDescriptor.mipLevelCount = 1;
 	viewDescriptor.baseArrayLayer = 0;
 	viewDescriptor.arrayLayerCount = 1;
+	viewDescriptor.usage = WGPUTextureUsage_None; // NEEDED TO BE SET EXPLICITLY FOR DAWN DEBUG TO WORK! (was initially missing...)
 	viewDescriptor.aspect = WGPUTextureAspect_All;
 	WGPUTextureView targetView = wgpuTextureCreateView(surfaceTexture.texture, &viewDescriptor);
 
