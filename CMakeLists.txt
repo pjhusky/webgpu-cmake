@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.13)
 
+# Enable colored output for diagnostics
+# if (NOT DEFINED CMAKE_COLOR_DIAGNOSTICS)
+    set(CMAKE_COLOR_DIAGNOSTICS ON CACHE BOOL "Enable colored output for diagnostics" FORCE)
+	set(CMAKE_COLOR_MAKEFILE ON)
+# endif()
+
 # WARNING: KEEP THESE STRINGS iN SYNC WITH build_win.bat
 message( "WARNING: KEEP THESE STRINGS iN SYNC WITH build_win.bat" )
 set(WEBGPU_IMPL_WGPU_NATIVE_NAME "WEBGPU_IMPL_WGPU_NATIVE")
@@ -244,10 +250,66 @@ if ( NOT INTERNAL_USE_EMSCRIPTEN )
 
 	else()
 
+		
+	
+		# %BUILD_CONFIG%\lib\cmake\Dawn
+		# find_package( Dawn REQUIRED )
+
+		# set_target_properties(dawn::webgpu_dawn PROPERTIES
+		# 	IMPORTED_LOCATION_DEBUG "${MY_WEBGPU_DAWN_BASE_DIR}/Debug/lib/cmake/Dawn"
+		# 	IMPORTED_LOCATION_RELEASE "${MY_WEBGPU_DAWN_BASE_DIR}/Release/lib/cmake/Dawn")
+
+		add_library(Dawn STATIC IMPORTED)
+		# https://stackoverflow.com/questions/72362303/how-to-use-fetchcontent-populate-with-eigen
+		# message( "dawn_SOURCE_DIR = ${dawn_SOURCE_DIR}" )
+		# message( "dawn_BINARY_DIR = ${dawn_BINARY_DIR}" )
+		# set_target_properties(Dawn PROPERTIES
+		# 	INTERFACE_INCLUDE_DIRECTORIES "${WEBGPU_DAWN_BASE_DIR}/Release/include"
+		# 	IMPORTED_LOCATION_DEBUG "${WEBGPU_DAWN_BASE_DIR}/Debug/bin/webgpu_dawn.dll"
+		# 	IMPORTED_LOCATION_RELEASE "${WEBGPU_DAWN_BASE_DIR}/Release/bin/webgpu_dawn.dll"
+		# )
+		# $<CONFIG:DEBUG>
+		
 		find_package( Dawn REQUIRED )
+		# set_target_properties(Dawn PROPERTIES
+		# 	INTERFACE_INCLUDE_DIRECTORIES "${WEBGPU_DAWN_BASE_DIR}/Release/include"
+		# 	IMPORTED_LOCATION_DEBUG "${WEBGPU_DAWN_BASE_DIR}/Debug/bin/webgpu_dawn.dll"
+		# 	IMPORTED_LOCATION_RELEASE "${WEBGPU_DAWN_BASE_DIR}/Release/bin/webgpu_dawn.dll"
+		# )
+		
+		# add_library( dawn::webgpu_dawn SHARED IMPORTED )
+		# include(FetchContent)
+		# FetchContent_Declare( 
+		# 	Dawn
+		# )
+		# FetchContent_MakeAvailable(Dawn)
+		
 		
 		# glfw3wegpu assumes that targets 'glfw' and 'webgpu' exist -> fix names
 		add_library(webgpu ALIAS dawn::webgpu_dawn)
+		
+		set_target_properties(dawn::webgpu_dawn PROPERTIES
+			# INTERFACE_INCLUDE_DIRECTORIES "${WEBGPU_DAWN_BASE_DIR}/Release/include"
+			# IMPORTED_LOCATION_$<CONFIG> "${WEBGPU_DAWN_BASE_DIR}/$<CONFIG>/bin/webgpu_dawn.dll"
+			IMPORTED_LOCATION_DEBUG "${WEBGPU_DAWN_BASE_DIR}/Debug/bin/webgpu_dawn.dll"
+			IMPORTED_IMPLIB_DEBUG "${WEBGPU_DAWN_BASE_DIR}/Debug/lib/webgpu_dawn.lib"
+			IMPORTED_LOCATION_RELEASE "${WEBGPU_DAWN_BASE_DIR}/Release/bin/webgpu_dawn.dll"
+			IMPORTED_IMPLIB_RELEASE "${WEBGPU_DAWN_BASE_DIR}/Release/lib/webgpu_dawn.lib"
+			
+		)
+
+		add_custom_command(	TARGET ${PROJECT} POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E echo 
+				"CONFIG = $<CONFIG>")
+
+		
+		
+		include(CMakePrintHelpers)
+		cmake_print_properties(
+			TARGETS     dawn::webgpu_dawn
+			PROPERTIES  IMPORTED_LOCATION
+						IMPORTED_LOCATION_DEBUG
+						IMPORTED_LOCATION_RELEASE)		
 		
 	endif()
 endif()
@@ -350,10 +412,27 @@ elseif( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_DAWN_NAME} )
 	# copy dawn dll
 	# https://discourse.cmake.org/t/copying-created-shared-libraries/4936/4
 	# https://discourse.cmake.org/t/usage-of-target-runtime-dlls-generator-expression/6355
+	# add_custom_command(TARGET ${PROJECT} POST_BUILD
+	#   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${PROJECT}> $<TARGET_FILE_DIR:${PROJECT}>
+	#   COMMAND_EXPAND_LISTS
+	# ) 
+	
+	# message( STATUS "TARGET_RUNTIME_DLLS = '${TARGET_RUNTIME_DLLS}'" )
+	# message( STATUS "TARGET_RUNTIME_DLLS = '$<TARGET_RUNTIME_DLLS:${PROJECT}>'" )
+	
+	add_custom_command(	TARGET ${PROJECT} POST_BUILD
+						COMMAND ${CMAKE_COMMAND} -E echo 
+						"TARGET_RUNTIME_DLLS = $<TARGET_RUNTIME_DLLS:${PROJECT}>")
+	
+	
 	add_custom_command(TARGET ${PROJECT} POST_BUILD
-	  COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${PROJECT}> $<TARGET_FILE_DIR:${PROJECT}>
-	  COMMAND_EXPAND_LISTS
-	) 
+		COMMAND ${CMAKE_COMMAND} -E copy 
+		$<TARGET_RUNTIME_DLLS:${PROJECT}> $<TARGET_FILE_DIR:${PROJECT}>
+		DEPENDS CMakeLists.txt 
+		COMMAND_EXPAND_LISTS
+  ) 
+
+	
 elseif( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_EMSCRIPTEN_NAME} )
 		target_link_libraries(${PROJECT} PRIVATE glfw webgpu glfw3webgpu )
 	# if (INTERNAL_USE_EMSCRIPTEN)

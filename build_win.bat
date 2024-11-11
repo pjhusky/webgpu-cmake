@@ -2,9 +2,9 @@
 @ECHO OFF
 setlocal ENABLEDELAYEDEXPANSION
 
+@REM set BUILD_CONFIG=Debug
 @REM 
-set BUILD_CONFIG=Debug
-@REM set BUILD_CONFIG=Release
+set BUILD_CONFIG=Release
 
 @REM
 @ECHO WARNING: KEEP THESE STRINGS iN SYNC WITH CMakeLists.txt
@@ -45,12 +45,23 @@ IF %WEBGPU_IMPL_STR%=="WEBGPU_IMPL_EMSCRIPTEN" (
 @ECHO ##############################
 @ECHO.
 
+@REM https://cmake.org/cmake/help/latest/command/find_package.html#command:find_package
+@REM https://cmake.org/cmake/help/latest/command/find_package.html#search-procedure
+
 @REM @set MY_CMAKE_PREFIX_PATH="C:\DEV\WebGPU_dawn\dawn\install\Release;C:\DEV\WebGPU_wgpu-native-C-from-rust\wgpu-native\meson-install-release" 
 @REM 
-@set MY_CMAKE_PREFIX_PATH="C:\DEV\WebGPU_dawn\dawn\install\%BUILD_CONFIG%;C:\DEV\WebGPU_wgpu-native-C-from-rust\wgpu-native\meson-install-release" 
+@set MY_CMAKE_PREFIX_PATH="C:/DEV/WebGPU_dawn/dawn/install/Debug;C:/DEV/WebGPU_dawn/dawn/install/Release;C:/DEV/WebGPU_wgpu-native-C-from-rust/wgpu-native/meson-install-release" 
+@REM @set MY_CMAKE_PREFIX_PATH="C:\DEV\WebGPU_dawn\dawn\install\%BUILD_CONFIG%;C:\DEV\WebGPU_wgpu-native-C-from-rust\wgpu-native\meson-install-release" 
+@REM @set MY_CMAKE_PREFIX_PATH="C:\DEV\WebGPU_dawn\dawn\install\%BUILD_CONFIG%\lib\cmake\Dawn;C:\DEV\WebGPU_wgpu-native-C-from-rust\wgpu-native\meson-install-release" 
+@REM @set MY_CMAKE_PREFIX_PATH="C:\DEV\WebGPU_dawn\dawn\install;C:\DEV\WebGPU_wgpu-native-C-from-rust\wgpu-native\meson-install-release" 
+
+
+@REM @set MY_WEBGPU_DAWN_BASE_DIR="%BUILD_CONFIG%\lib\cmake\Dawn"
+
+@set MY_WEBGPU_DAWN_BASE_DIR=C:/DEV/WebGPU_dawn/dawn/install
 
 @set MY_WEBGPU_WGPU_NATIVE_BASE_DIR="C:\DEV\WebGPU_wgpu-native-C-from-rust\wgpu-native\meson-install-release"
-@set CMAKE_GEN_BUILD_FILE_CMD=%PREFIX_CMD% cmake -S . -B %BUILD_DIR% -DCMAKE_BUILD_TYPE=%BUILD_CONFIG% -DCMAKE_PREFIX_PATH=%MY_CMAKE_PREFIX_PATH% -DWEBGPU_IMPL_STR=%WEBGPU_IMPL_STR% -DWEBGPU_WGPU_NATIVE_BASE_DIR=%MY_WEBGPU_WGPU_NATIVE_BASE_DIR%
+@set CMAKE_GEN_BUILD_FILE_CMD=%PREFIX_CMD% cmake -S . -B %BUILD_DIR% -DCMAKE_BUILD_TYPE=%BUILD_CONFIG% -DCMAKE_PREFIX_PATH=%MY_CMAKE_PREFIX_PATH% -DCMAKE_MODULE_PATH=%MY_CMAKE_PREFIX_PATH% -DWEBGPU_IMPL_STR=%WEBGPU_IMPL_STR% -DWEBGPU_WGPU_NATIVE_BASE_DIR=%MY_WEBGPU_WGPU_NATIVE_BASE_DIR% -DWEBGPU_DAWN_BASE_DIR=%MY_WEBGPU_DAWN_BASE_DIR% 
 
 @set OPTIONAL_TARGET=
 
