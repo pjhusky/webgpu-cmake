@@ -11,16 +11,22 @@
 	#include <wgpu.h>
 #endif
 
-#include <GLFW/glfw3.h>
+#if (!defined __EMSCRIPTEN__ )
+	#include <GLFW/glfw3.h>
+#endif
+
 #include "glfw3webgpu/glfw3webgpu.h"
 
 #ifdef __EMSCRIPTEN__
-#  include <emscripten.h>
+	#include <emscripten.h>
 #endif // __EMSCRIPTEN__
 
 #include <iostream>
 #include <cassert>
 #include <vector>
+
+// #define GLSL(...) "#version 460\n" #__VA_ARGS__
+// #define WGSL(...) R"(" # __VA_ARGS__ # ")"
 
 // We embbed the source of the shader module here
 const char* shaderSource = R"(
@@ -42,6 +48,7 @@ fn fs_main() -> @location(0) vec4f {
 	return vec4f(0.0, 0.7, 1.0, 1.0);
 }
 )";
+
 
 class Application {
 public:
@@ -82,6 +89,9 @@ int main() {
 #elif ( WEBGPU_IMPL == WEBGPU_IMPL_DAWN )
 	std::cout << "WebGPU Backend is dawn\n";
 	std::cout << WEBGPU_IMPL_DAWN_NAME << std::endl;
+#elif ( defined __EMSCRIPTEN__ )
+	std::cout << "WebGPU Backend is EMSCRIPTEN\n";
+	std::cout << WEBGPU_IMPL_EMSCRIPTEN_NAME << std::endl;
 #else
 	std::cout << "WebGPU Backend is UNKNOWN\n";
 #endif
@@ -123,7 +133,12 @@ bool Application::Initialize() {
 	WGPUInstance instance = wgpuCreateInstance(nullptr);
 	
 	std::cout << "Requesting adapter..." << std::endl;
+#if ( defined __EMSCRIPTEN__ )
+	//surface = glfwCreateWindowWGPUSurface( instance, window );
 	surface = glfwGetWGPUSurface(instance, window);
+#else
+	surface = glfwGetWGPUSurface(instance, window);
+#endif
 	WGPURequestAdapterOptions adapterOpts = {};
 	adapterOpts.nextInChain = nullptr;
 	adapterOpts.compatibleSurface = surface;
@@ -135,24 +150,24 @@ bool Application::Initialize() {
 	std::cout << "Requesting device..." << std::endl;
 	WGPUDeviceDescriptor deviceDesc = {};
 	deviceDesc.nextInChain = nullptr;
-#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )
 	deviceDesc.label = "My Device";
 #else	
-	deviceDesc.label = WGPUStringView{ "My Device", strlen( "My Device" ) };
+	deviceDesc.label = WGPUStringView{ "My Device", 0+strlen( "My Device" ) };
 #endif
 	deviceDesc.requiredFeatureCount = 0;
 	deviceDesc.requiredLimits = nullptr;
 	deviceDesc.defaultQueue.nextInChain = nullptr;
-#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )	
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )
 	deviceDesc.defaultQueue.label = "The default queue";
 	deviceDesc.deviceLostCallback = [](WGPUDeviceLostReason reason, char const* message, void* /* pUserData */) {
 #else	
-	deviceDesc.defaultQueue.label = WGPUStringView{ "The default queue", strlen( "The default queue" ) };
+	deviceDesc.defaultQueue.label = WGPUStringView{ "The default queue", 0+strlen( "The default queue" ) };
 	deviceDesc.deviceLostCallback = [](WGPUDeviceLostReason reason, struct WGPUStringView message, void* /* pUserData */) {	
 #endif
 		std::cout << "Device lost: reason " << reason;
 		
-	#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )
+	#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )
 		if (message != NULL) std::cout << " (" << message << ")";
 	#else
 		if (message.data != NULL) std::cout << " (" << message.data << ")";
@@ -162,15 +177,23 @@ bool Application::Initialize() {
 	device = requestDeviceSync(adapter, &deviceDesc);
 	std::cout << "Got device: " << device << std::endl;
 
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )
 	auto onDeviceError = [](WGPUErrorType type, char const* message, void* /* pUserData */) {
-	//auto onDeviceError = [](WGPUErrorType type, struct WGPUStringView message, void* /* pUserData */) {
+#else
+	auto onDeviceError = [](WGPUErrorType type, struct WGPUStringView message, void* /* pUserData */) {
+#endif
 		std::cout << "Uncaptured device error: type " << type;
+
+	#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )
 		if (message != nullptr ) std::cout << " (" << message << ")";
-		//if (message.data != nullptr ) std::cout << " (" << message.data << ")";
+	#else
+		if (message.data != nullptr ) std::cout << " (" << message.data << ")";
+	#endif
 		std::cout << std::endl;
 	};
 	
-	//!!!wgpuDeviceSetUncapturedErrorCallback(device, onDeviceError, nullptr /* pUserData */);
+	//!!!
+	wgpuDeviceSetUncapturedErrorCallback(device, onDeviceError, nullptr /* pUserData */);
 	
 	queue = wgpuDeviceGetQueue(device);
 
@@ -179,13 +202,17 @@ bool Application::Initialize() {
 	config.nextInChain = nullptr;
 
 	// Configuration of the textures created for the underlying swap chain
-	config.width = 640;
-	config.height = 480;
+	config.width = 800;
+	config.height = 600;
 	config.usage = WGPUTextureUsage_RenderAttachment;
 	// https://www.reddit.com/r/webgpu/comments/1ffqvja/missing_wgpusurfacegetpreferredformat_in_webgpu/
 	// https://github.com/webgpu-native/webgpu-headers/issues/290
-	//surfaceFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
-	surfaceFormat = WGPUTextureFormat_BGRA8Unorm; WGPUTextureFormat_RGBA8Uint;
+#if ( defined __EMSCRIPTEN__ )
+	surfaceFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
+#else
+	surfaceFormat = WGPUTextureFormat_BGRA8Unorm;
+	
+#endif
 	//surfaceFormat = wgpuSurfaceGetCapabilities( surface, adapter, 
 	config.format = surfaceFormat;
 
@@ -234,10 +261,10 @@ void Application::MainLoop() {
 	// Create a command encoder for the draw call
 	WGPUCommandEncoderDescriptor encoderDesc = {};
 	encoderDesc.nextInChain = nullptr;
-#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )
 	encoderDesc.label = "My command encoder";
 #else
-	encoderDesc.label = WGPUStringView{ "My command encoder", strlen("My command encoder") };
+	encoderDesc.label = WGPUStringView{ "My command encoder", 0+strlen("My command encoder") };
 #endif
 	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(device, &encoderDesc);
 
@@ -252,7 +279,7 @@ void Application::MainLoop() {
 	renderPassColorAttachment.loadOp = WGPULoadOp_Clear;
 	renderPassColorAttachment.storeOp = WGPUStoreOp_Store;
 	renderPassColorAttachment.clearValue = WGPUColor{ 0.9, 0.05, 0.5, 1.0 };
-#if ( WEBGPU_IMPL != WEBGPU_IMPL_WGPU_NATIVE )
+#if ( WEBGPU_IMPL != WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )
 	renderPassColorAttachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 #endif
 
@@ -274,10 +301,10 @@ void Application::MainLoop() {
 	// Encode and submit the render pass
 	WGPUCommandBufferDescriptor cmdBufferDescriptor = {};
 	cmdBufferDescriptor.nextInChain = nullptr;
-#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )
 	cmdBufferDescriptor.label = "Command buffer";
 #else	
-	cmdBufferDescriptor.label = WGPUStringView{ "Command buffer", strlen( "Command buffer" ) };
+	cmdBufferDescriptor.label = WGPUStringView{ "Command buffer", 0+strlen( "Command buffer" ) };
 #endif
 	WGPUCommandBuffer command = wgpuCommandEncoderFinish(encoder, &cmdBufferDescriptor);
 	
@@ -294,9 +321,6 @@ void Application::MainLoop() {
 	wgpuSurfacePresent(surface);
 #endif
 
-#if ( WEBGPU_IMPL == WEBGPU_IMPL_DAWN )
-#pragma message ( "should not get here" )
-#endif
 
 #if ( WEBGPU_IMPL == WEBGPU_IMPL_DAWN )
 	wgpuDeviceTick(device);
@@ -357,7 +381,7 @@ void Application::InitializePipeline() {
 	WGPUShaderModuleWGSLDescriptor shaderCodeDesc{};
 	// Set the chained struct's header
 	shaderCodeDesc.chain.next = nullptr;
-#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )
 	shaderCodeDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
 #else
 	shaderCodeDesc.chain.sType = WGPUSType_ShaderSourceWGSL; //WGPUSType_ShaderModuleWGSLDescriptor = 0x00000006,;
@@ -366,10 +390,10 @@ void Application::InitializePipeline() {
 	// Connect the chain
 	shaderDesc.nextInChain = &shaderCodeDesc.chain;
 
-#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )	
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )	
 	shaderCodeDesc.code = shaderSource;
 #else
-	shaderCodeDesc.code = WGPUStringView{ shaderSource, strlen( shaderSource ) };
+	shaderCodeDesc.code = WGPUStringView{ shaderSource, 0+strlen( shaderSource ) };
 #endif
 	WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(device, &shaderDesc);
 
@@ -385,10 +409,10 @@ void Application::InitializePipeline() {
 	// Here we tell that the programmable vertex shader stage is described
 	// by the function called 'vs_main' in that module.
 	pipelineDesc.vertex.module = shaderModule;
-#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )	
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )	
 	pipelineDesc.vertex.entryPoint = "vs_main";
 #else
-	pipelineDesc.vertex.entryPoint = WGPUStringView{ "vs_main", strlen( "vs_main" ) };
+	pipelineDesc.vertex.entryPoint = WGPUStringView{ "vs_main", 0+strlen( "vs_main" ) };
 #endif
 	pipelineDesc.vertex.constantCount = 0;
 	pipelineDesc.vertex.constants = nullptr;
@@ -414,10 +438,10 @@ void Application::InitializePipeline() {
 	// by the function called 'fs_main' in the shader module.
 	WGPUFragmentState fragmentState{};
 	fragmentState.module = shaderModule;
-#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE )	
+#if ( WEBGPU_IMPL == WEBGPU_IMPL_WGPU_NATIVE || ( defined __EMSCRIPTEN__ ) )	
 	fragmentState.entryPoint = "fs_main";
 #else
-	fragmentState.entryPoint = WGPUStringView{ "fs_main", strlen( "fs_main" ) };
+	fragmentState.entryPoint = WGPUStringView{ "fs_main", 0+strlen( "fs_main" ) };
 #endif
 	fragmentState.constantCount = 0;
 	fragmentState.constants = nullptr;

@@ -4,6 +4,24 @@ cmake_minimum_required(VERSION 3.13)
 message( "WARNING: KEEP THESE STRINGS iN SYNC WITH build_win.bat" )
 set(WEBGPU_IMPL_WGPU_NATIVE_NAME "WEBGPU_IMPL_WGPU_NATIVE")
 set(WEBGPU_IMPL_DAWN_NAME "WEBGPU_IMPL_DAWN")
+set(WEBGPU_IMPL_EMSCRIPTEN_NAME "WEBGPU_IMPL_EMSCRIPTEN")
+
+set(INTERNAL_USE_EMSCRIPTEN OFF)
+
+# string( MD5 WEBGPU_IMPL_STR ${WEBGPU_IMPL_STR} )
+# string( CONCAT WEBGPU_IMPL_STR_TOKEN "0x" ${WEBGPU_IMPL_STR} "ULL" )
+
+# string( MD5 WEBGPU_IMPL_WGPU_NATIVE_TOKEN ${WEBGPU_IMPL_WGPU_NATIVE_NAME} )
+# string( CONCAT WEBGPU_IMPL_WGPU_NATIVE_TOKEN "0x" ${WEBGPU_IMPL_WGPU_NATIVE_TOKEN} "ULL" )
+
+# string( MD5 WEBGPU_IMPL_DAWN_TOKEN ${WEBGPU_IMPL_DAWN_NAME} )
+# string( CONCAT WEBGPU_IMPL_DAWN_TOKEN "0x" ${WEBGPU_IMPL_DAWN_TOKEN} "ULL" )
+
+set( WEBGPU_IMPL_WGPU_NATIVE_TOKEN 1 )
+set( WEBGPU_IMPL_DAWN_TOKEN 2 )
+set( WEBGPU_IMPL_EMSCRIPTEN_TOKEN 3 )
+
+
 
 # # SWITCH for WGPU_NATIVE vs. DAWN
 # set(WEBGPU_IMPL_STR ${WEBGPU_IMPL_DAWN_NAME})
@@ -45,6 +63,13 @@ else()
 	TrySetWebGpuFromEnvVar()
 endif()	
 
+
+if( "${WEBGPU_IMPL_STR}" MATCHES "${WEBGPU_IMPL_EMSCRIPTEN_NAME}" )
+	message( "setting BACKEND to '${WEBGPU_IMPL_EMSCRIPTEN_NAME}'" )
+	set(INTERNAL_USE_EMSCRIPTEN ON)
+	set(WEBGPU_IMPL_STR ${WEBGPU_IMPL_EMSCRIPTEN_NAME})
+endif()
+
 # if neither the variable nor the env-variable were defined and set to a valid value, fallback to the Dawn WebGPU implementation
 if ( NOT DEFINED WEBGPU_IMPL_STR )
 	message( "defaulting to '${WEBGPU_IMPL_DAWN_NAME}'" )
@@ -55,30 +80,23 @@ else()
 endif()
 
 
+
 message( "WEBGPU_IMPL_STR = '${WEBGPU_IMPL_STR}'" )
 message( "WEBGPU_IMPL_WGPU_NATIVE_NAME = '${WEBGPU_IMPL_WGPU_NATIVE_NAME}'" )
 message( "WEBGPU_IMPL_DAWN_NAME = '${WEBGPU_IMPL_DAWN_NAME}'" )
+message( "WEBGPU_IMPL_EMSCRIPTEN_NAME = '${WEBGPU_IMPL_EMSCRIPTEN_NAME}'" )
 
-# string( MD5 WEBGPU_IMPL_STR ${WEBGPU_IMPL_STR} )
-# string( CONCAT WEBGPU_IMPL_STR_TOKEN "0x" ${WEBGPU_IMPL_STR} "ULL" )
-
-# string( MD5 WEBGPU_IMPL_WGPU_NATIVE_TOKEN ${WEBGPU_IMPL_WGPU_NATIVE_NAME} )
-# string( CONCAT WEBGPU_IMPL_WGPU_NATIVE_TOKEN "0x" ${WEBGPU_IMPL_WGPU_NATIVE_TOKEN} "ULL" )
-
-# string( MD5 WEBGPU_IMPL_DAWN_TOKEN ${WEBGPU_IMPL_DAWN_NAME} )
-# string( CONCAT WEBGPU_IMPL_DAWN_TOKEN "0x" ${WEBGPU_IMPL_DAWN_TOKEN} "ULL" )
-
-set( WEBGPU_IMPL_WGPU_NATIVE_TOKEN 1 )
-set( WEBGPU_IMPL_DAWN_TOKEN 2 )
 
 add_compile_options( 
 	-DWEBGPU_IMPL=${WEBGPU_IMPL_STR} 
 	-DWEBGPU_IMPL_WGPU_NATIVE=${WEBGPU_IMPL_WGPU_NATIVE_TOKEN} 
 	-DWEBGPU_IMPL_DAWN=${WEBGPU_IMPL_DAWN_TOKEN} 
+	-DWEBGPU_IMPL_EMSCRIPTEN=${WEBGPU_IMPL_EMSCRIPTEN_TOKEN} 
 	#
 	-DWEBGPU_IMPL_STR="${WEBGPU_IMPL_STR}" 
 	-DWEBGPU_IMPL_WGPU_NATIVE_NAME="${WEBGPU_IMPL_WGPU_NATIVE_NAME}" 
 	-DWEBGPU_IMPL_DAWN_NAME="${WEBGPU_IMPL_DAWN_NAME}" 
+	-DWEBGPU_IMPL_EMSCRIPTEN_NAME="${WEBGPU_IMPL_EMSCRIPTEN_NAME}" 
 	#
 	-DDUMMY=27 ) 
 
@@ -130,11 +148,8 @@ add_executable( ${PROJECT}
 	webgpu-utils.cpp
 )
 
-
-
-
-# add_executable(${PROJECT} hello_webgpu.cpp) # only works in Dawn (or maybe with a Cpp wrapper for WGPU_Native?)
-# add_executable(${PROJECT} hello_webgpu_c.cpp)
+#add_executable(${PROJECT} hello_webgpu.cpp) # only works in Dawn (or maybe with a Cpp wrapper for WGPU_Native?)
+#add_executable(${PROJECT} hello_webgpu_c.cpp)
 
 
 
@@ -150,90 +165,91 @@ set_target_properties(${PROJECT} PROPERTIES
 
 
 
-
-include(FetchContent)
-FetchContent_Declare(
-  glfw
-  GIT_REPOSITORY https://github.com/glfw/glfw
-  GIT_TAG        7b6aead9fb88b3623e3b3725ebb42670cbe4c579 # v 3.4
-  SYSTEM
-#   OPTIONS
-# 	"GLFW_LIBRARY_TYPE STATIC"
-# 	# "GLFW_LIBRARY_TYPE OBJECT" # https://www.glfw.org/docs/latest/compile.html
-# 	"GLFW_BUILD_TESTS OFF"
-# 	"GLFW_BUILD_EXAMPLES OFF"
-# 	"GLFW_BUILD_DOCS OFF"
-)
-# This will try calling find_package() first for both dependencies
-FetchContent_MakeAvailable(glfw)
-# find_package(glfw3
-#     REQUIRED
-#     NO_DEFAULT_PATH
-#     #PATHS ${mylibrary_SOURCE_DIR}/path/to/dir/containing/*Config.cmake
-# 	PATHS ${CMAKE_FIND_PACKAGE_REDIRECTS_DIR}
-# )
-# FetchContent_Populate(glfw)
-#message( "glfw_SOURCE_DIR = '${glfw_SOURCE_DIR}'" )
-
-# https://stackoverflow.com/a/23995391
-# add_library(glfw STATIC IMPORTED)
-set_target_properties(glfw PROPERTIES
-	INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
-	#INTERFACE_INCLUDE_DIRECTORIES "/include"
-	#
-	IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/glfw3"
-	#IMPORTED_LOCATION "/lib/libwgpu_native.a"
-)
-# target_compile_options( glfw3 PRIVATE 
-# 	"GLFW_BUILD_TESTS OFF"
-#  	"GLFW_BUILD_EXAMPLES OFF"
-#  	"GLFW_BUILD_DOCS OFF" )
-# https://stackoverflow.com/a/23995391
-# target_compile_options(glfw INTERFACE "$<$<CONFIG:DEBUG>:-DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_DOCS=OFF>")
-# target_compile_options(glfw INTERFACE "$<$<CONFIG:RELEASE>:-DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_DOCS=OFF>")
-target_compile_options(glfw PUBLIC "$<$<CONFIG:DEBUG>:-DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_DOCS=OFF>")
-target_compile_options(glfw PUBLIC "$<$<CONFIG:RELEASE>:-DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_DOCS=OFF>")
-#find_package( glfw REQUIRED )
-
-# glfw3 == glfw, but more obvious to include version in name
-add_library(glfw3 ALIAS glfw)
-include_directories( "${glfw_SOURCE_DIR}/include" )
-
-
-
-
-if ( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_WGPU_NATIVE_NAME} )
-
-	# 
-	add_library(wgpu-native STATIC IMPORTED)
-	# https://stackoverflow.com/questions/72362303/how-to-use-fetchcontent-populate-with-eigen
-	# message( "wgpu-native_SOURCE_DIR = ${wgpu-native_SOURCE_DIR}" )
-	# message( "wgpu-native_BINARY_DIR = ${wgpu-native_BINARY_DIR}" )
-	set_target_properties(wgpu-native PROPERTIES
-		#INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include" # NOPE
-		#INTERFACE_INCLUDE_DIRECTORIES "C:/DEV/WebGPU_wgpu-native-C-from-rust/wgpu-native/meson-install-release/include"
-		INTERFACE_INCLUDE_DIRECTORIES "${WEBGPU_WGPU_NATIVE_BASE_DIR}/include;${WEBGPU_WGPU_NATIVE_BASE_DIR}/include/webgpu-headers"
-		#INTERFACE_INCLUDE_DIRECTORIES "/include" # NOPE
-		#INTERFACE_INCLUDE_DIRECTORIES "${wgpu-native_SOURCE_DIR}/include" # NOPE
-		#
-		# IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/libwgpu_native.a" # NOPE
-		#IMPORTED_LOCATION "C:/DEV/WebGPU_wgpu-native-C-from-rust/wgpu-native/meson-install-release/lib/libwgpu_native.a"
-		IMPORTED_LOCATION "${WEBGPU_WGPU_NATIVE_BASE_DIR}/lib/libwgpu_native.a"
-		#IMPORTED_LOCATION "/lib/libwgpu_native.a" # NOPE
-		#IMPORTED_LOCATION "${wgpu-native_BINARY_DIR}/lib/libwgpu_native.a" # NOPE
+if ( NOT INTERNAL_USE_EMSCRIPTEN )
+	include(FetchContent)
+	FetchContent_Declare(
+	glfw
+	GIT_REPOSITORY https://github.com/glfw/glfw
+	GIT_TAG        7b6aead9fb88b3623e3b3725ebb42670cbe4c579 # v 3.4
+	SYSTEM
+	#   OPTIONS
+	# 	"GLFW_LIBRARY_TYPE STATIC"
+	# 	# "GLFW_LIBRARY_TYPE OBJECT" # https://www.glfw.org/docs/latest/compile.html
+	# 	"GLFW_BUILD_TESTS OFF"
+	# 	"GLFW_BUILD_EXAMPLES OFF"
+	# 	"GLFW_BUILD_DOCS OFF"
 	)
-	find_package( wgpu-native REQUIRED )
+	# This will try calling find_package() first for both dependencies
+	FetchContent_MakeAvailable(glfw)
+	# find_package(glfw3
+	#     REQUIRED
+	#     NO_DEFAULT_PATH
+	#     #PATHS ${mylibrary_SOURCE_DIR}/path/to/dir/containing/*Config.cmake
+	# 	PATHS ${CMAKE_FIND_PACKAGE_REDIRECTS_DIR}
+	# )
+	# FetchContent_Populate(glfw)
+	#message( "glfw_SOURCE_DIR = '${glfw_SOURCE_DIR}'" )
 
-	# glfw3wegpu assumes that targets 'glfw' and 'webgpu' exist -> fix names
-	add_library(webgpu ALIAS wgpu-native)
+	# https://stackoverflow.com/a/23995391
+	# add_library(glfw STATIC IMPORTED)
+	set_target_properties(glfw PROPERTIES
+		INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
+		#INTERFACE_INCLUDE_DIRECTORIES "/include"
+		#
+		IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/glfw3"
+		#IMPORTED_LOCATION "/lib/libwgpu_native.a"
+	)
+	# target_compile_options( glfw3 PRIVATE 
+	# 	"GLFW_BUILD_TESTS OFF"
+	#  	"GLFW_BUILD_EXAMPLES OFF"
+	#  	"GLFW_BUILD_DOCS OFF" )
+	# https://stackoverflow.com/a/23995391
+	# target_compile_options(glfw INTERFACE "$<$<CONFIG:DEBUG>:-DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_DOCS=OFF>")
+	# target_compile_options(glfw INTERFACE "$<$<CONFIG:RELEASE>:-DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_DOCS=OFF>")
+	target_compile_options(glfw PUBLIC "$<$<CONFIG:DEBUG>:-DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_DOCS=OFF>")
+	target_compile_options(glfw PUBLIC "$<$<CONFIG:RELEASE>:-DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_DOCS=OFF>")
+	#find_package( glfw REQUIRED )
 
-else()
+	# glfw3 == glfw, but more obvious to include version in name
+	add_library(glfw3 ALIAS glfw)
+	include_directories( "${glfw_SOURCE_DIR}/include" )
+endif()
 
-	find_package( Dawn REQUIRED )
-	
-	# glfw3wegpu assumes that targets 'glfw' and 'webgpu' exist -> fix names
-	add_library(webgpu ALIAS dawn::webgpu_dawn)
-	
+
+if ( NOT INTERNAL_USE_EMSCRIPTEN )
+	if ( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_WGPU_NATIVE_NAME} )
+
+		# 
+		add_library(wgpu-native STATIC IMPORTED)
+		# https://stackoverflow.com/questions/72362303/how-to-use-fetchcontent-populate-with-eigen
+		# message( "wgpu-native_SOURCE_DIR = ${wgpu-native_SOURCE_DIR}" )
+		# message( "wgpu-native_BINARY_DIR = ${wgpu-native_BINARY_DIR}" )
+		set_target_properties(wgpu-native PROPERTIES
+			#INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include" # NOPE
+			#INTERFACE_INCLUDE_DIRECTORIES "C:/DEV/WebGPU_wgpu-native-C-from-rust/wgpu-native/meson-install-release/include"
+			INTERFACE_INCLUDE_DIRECTORIES "${WEBGPU_WGPU_NATIVE_BASE_DIR}/include;${WEBGPU_WGPU_NATIVE_BASE_DIR}/include/webgpu-headers"
+			#INTERFACE_INCLUDE_DIRECTORIES "/include" # NOPE
+			#INTERFACE_INCLUDE_DIRECTORIES "${wgpu-native_SOURCE_DIR}/include" # NOPE
+			#
+			# IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/libwgpu_native.a" # NOPE
+			#IMPORTED_LOCATION "C:/DEV/WebGPU_wgpu-native-C-from-rust/wgpu-native/meson-install-release/lib/libwgpu_native.a"
+			IMPORTED_LOCATION "${WEBGPU_WGPU_NATIVE_BASE_DIR}/lib/libwgpu_native.a"
+			#IMPORTED_LOCATION "/lib/libwgpu_native.a" # NOPE
+			#IMPORTED_LOCATION "${wgpu-native_BINARY_DIR}/lib/libwgpu_native.a" # NOPE
+		)
+		find_package( wgpu-native REQUIRED )
+
+		# glfw3wegpu assumes that targets 'glfw' and 'webgpu' exist -> fix names
+		add_library(webgpu ALIAS wgpu-native)
+
+	else()
+
+		find_package( Dawn REQUIRED )
+		
+		# glfw3wegpu assumes that targets 'glfw' and 'webgpu' exist -> fix names
+		add_library(webgpu ALIAS dawn::webgpu_dawn)
+		
+	endif()
 endif()
 
 # glfw3wegpu assumes that targets 'glfw' and 'webgpu' exist.
@@ -317,18 +333,40 @@ if ( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_WGPU_NATIVE_NAME} )
 			target_link_options(${PROJECT} PUBLIC "$<$<CONFIG:RELEASE>:msvcrt.lib>")
 	endif()
 	
-else()
+elseif( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_DAWN_NAME} )
 	# Declare dependency on the dawn::webgpu_dawn library
 	# target_link_libraries( ${PROJECT} dawn::webgpu_dawn glfw3webgpu )
 	target_link_libraries( ${PROJECT} dawn::webgpu_dawn glfw3 glfw3webgpu )
 
+	# message( STATUS "1" )
+	# message( STATUS $<TARGET_PROPERTY:${PROJECT},IMPORTED_LOCATION> )
+	# message( STATUS "$<TARGET_PROPERTY:${PROJECT},IMPORTED_LOCATION>" )
+	# message( STATUS "2" )
+	# add_custom_command(TARGET ${PROJECT} POST_BUILD
+	#   COMMAND ${CMAKE_COMMAND} -E echo "$<TARGET_PROPERTY:${PROJECT},IMPORTED_LOCATION>"
+	#   COMMAND_EXPAND_LISTS
+	# ) 
+	
 	# copy dawn dll
 	# https://discourse.cmake.org/t/copying-created-shared-libraries/4936/4
 	# https://discourse.cmake.org/t/usage-of-target-runtime-dlls-generator-expression/6355
 	add_custom_command(TARGET ${PROJECT} POST_BUILD
-	  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${PROJECT}> $<TARGET_FILE_DIR:${PROJECT}>
+	  COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${PROJECT}> $<TARGET_FILE_DIR:${PROJECT}>
 	  COMMAND_EXPAND_LISTS
 	) 
+elseif( ${WEBGPU_IMPL_STR} STREQUAL ${WEBGPU_IMPL_EMSCRIPTEN_NAME} )
+		target_link_libraries(${PROJECT} PRIVATE glfw webgpu glfw3webgpu )
+	# if (INTERNAL_USE_EMSCRIPTEN)
+		
+		# Add Emscripten-specific link options
+		target_link_options(${PROJECT} PRIVATE
+			-sUSE_GLFW=3 # Use Emscripten-provided GLFW
+			-sUSE_WEBGPU # Handle WebGPU symbols
+			-sASYNCIFY # Required by WebGPU-C++
+		)
+		# Generate a full web page rather than a simple WebAssembly module
+		set_target_properties(${PROJECT} PROPERTIES SUFFIX ".html")
+	# endif()
 endif()
 
 
